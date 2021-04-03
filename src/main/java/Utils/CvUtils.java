@@ -164,6 +164,14 @@ public class CvUtils {
         System.out.print(s.toString() + "\r");
     }
 
+    public static void drawRRect(Mat in, RotatedRect rect, Scalar color, int thickness){
+        Point[] points = new Point[4];
+        rect.points(points);
+        for(int i=0; i<4; ++i){
+            Imgproc.line(in, points[i], points[(i+1)%4], color, thickness);
+        }
+    }
+
     public static double calcPinholeHor(double fov, double imageWidth, double imageHeight){
         double diagonalView = Math.toRadians(fov);
         Fraction aspectFraction = new Fraction(imageWidth, imageHeight);

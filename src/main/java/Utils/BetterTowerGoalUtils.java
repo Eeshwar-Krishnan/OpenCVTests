@@ -329,18 +329,24 @@ public class BetterTowerGoalUtils {
 
         Mat cropped = inClone.submat(enlarged);
 
-        Mat extracted = cropInRange(cropped);
+        Mat extracted = normCropInRange(cropped);
+
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(15, 15));
+        Imgproc.morphologyEx(extracted, extracted, Imgproc.MORPH_OPEN, kernel);
+
+        kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
+        //Imgproc.morphologyEx(extracted, extracted, Imgproc.MORPH_CLOSE, kernel);
         //Core.extractChannel(cropped, extracted, 2);
         //Imgproc.adaptiveThreshold(extracted, extracted, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 2);
 
-        Imgproc.cvtColor(extracted, outMat, Imgproc.COLOR_GRAY2BGR);
+        //Imgproc.cvtColor(extracted, outMat, Imgproc.COLOR_GRAY2BGR);
 
         MatOfPoint contour = getContour(extracted);
         MatOfPoint2f cnt2f = new MatOfPoint2f(contour.toArray());
-        if(cnt2f.toArray().length > 0 && false) {
+        if(cnt2f.toArray().length > 0) {
             MatOfPoint2f dp = new MatOfPoint2f();
-            Imgproc.approxPolyDP(cnt2f, dp, 0.02 * Imgproc.arcLength(cnt2f, true), true);
-            contour = new MatOfPoint(dp.toArray());
+            Imgproc.approxPolyDP(cnt2f, dp, 0.01 * Imgproc.arcLength(cnt2f, true), true);
+            //contour = new MatOfPoint(dp.toArray());
             dp.release();
         }
 
@@ -358,92 +364,44 @@ public class BetterTowerGoalUtils {
         return scl;
     }
 
-    public static void drawPOI(Mat in, Rect bounds){
-        double inset = 0.1;
-        //inset = 0;
-        double maxInset = 0.2;
-        //maxInset = 0;
-        double yInst = 0.5;
-        double maxYInset = 0.4;
+    public static double approximateDistanceToGoal(double objDim, double imgDim, double focalDist){
+        return (objDim * focalDist) / imgDim;
+    }
 
-        Rect newBound = new Rect((int)(bounds.x + (bounds.width * inset)), (int) (bounds.y + (bounds.height * yInst)), (int)(bounds.width * (1-maxInset)), (int) (bounds.height * (1-maxYInset)));
+    public static double getDistanceToGoalWall(double cameraHeight, double pitch){
+        return (40.625 - cameraHeight) / Math.tan(Math.toRadians(pitch));
+    }
 
-        //System.out.println("Bounds " + newBound + " | " + bounds);
+    public static double[] approxPowershotAngles(double yaw, double goalWallDist){
+        double goalOffset = 16.5;
+        double powershotOffset = 7.5;
 
-        Mat inCopy = in.submat(newBound);
-        Mat inNorm = BetterTowerGoalUtils.cropInRange(inCopy);
+        double dist = Math.tan(Math.toRadians(yaw)) * goalWallDist;
 
-        //Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
-        //Imgproc.morphologyEx(inNorm, inNorm, Imgproc.MORPH_OPEN, kernel);
+        double psht1 = goalOffset;
+        double psht2 = psht1 + powershotOffset;
+        double psht3 = psht2 + powershotOffset;
 
-        Mat fullMask = new Mat(inNorm.rows(), inNorm.cols(), inNorm.type(), new Scalar(255,255,255));
-        Mat subMask = new Mat();
-        Core.subtract(fullMask, inNorm, subMask);
+        double[] dists = new double[3];
 
-        Imgproc.cvtColor(in, in, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.cvtColor(in, in, Imgproc.COLOR_GRAY2BGR);
-
-        MatOfPoint corners = new MatOfPoint();
-        double qualityLevel = 0.01;
-        double minDistance = 10;
-        int blockSize = 3, gradientSize = 3;
-        boolean useHarrisDetector = true;
-        double k = 0.04;
-
-        Imgproc.goodFeaturesToTrack(subMask, corners, 4, qualityLevel, minDistance, new Mat(), blockSize, gradientSize, useHarrisDetector, k);
-
-        int[] cornersData = new int[(int) (corners.total() * corners.channels())];
-        corners.get(0, 0, cornersData);
-        Mat matCorners = new Mat(corners.rows(), 2, CvType.CV_32F);
-        float[] matCornersData = new float[(int) (matCorners.total() * matCorners.channels())];
-        matCorners.get(0, 0, matCornersData);
-        for (int i = 0; i < corners.rows(); i++) {
-            matCornersData[i * 2] = cornersData[i * 2];
-            matCornersData[i * 2 + 1] = cornersData[i * 2 + 1];
-        }
-        matCorners.put(0, 0, matCornersData);
-
-        Size winSize = new Size(5, 5);
-        Size zeroZone = new Size(-1, -1);
-        TermCriteria criteria = new TermCriteria(TermCriteria.EPS + TermCriteria.COUNT, 40, 0.001);
-
-        Imgproc.cornerSubPix(subMask, matCorners, winSize, zeroZone, criteria);
-
-        matCorners.get(0, 0, matCornersData);
-
-        Scalar[] colors = new Scalar[]{ new Scalar(255, 75, 75), new Scalar(0, 255, 0), new Scalar(0, 0, 255), new Scalar(255, 0, 255) };
-
-        Point[] points  = new Point[4];
-        for(int i = 0; i < corners.rows(); i ++){
-            Point tmp = new Point((newBound.width/2.0), (newBound.height/2.0));
-            Point p = new Point(matCornersData[i * 2], matCornersData[i * 2 + 1]);
-
-            //System.out.println("P " + p + " Tmp " + tmp);
-
-            if(p.x < tmp.x && p.y < tmp.y){
-                points[0] = p;
-            }
-            if(p.x > tmp.x && p.y < tmp.y){
-                points[1] = p;
-            }
-            if(p.x < tmp.x && p.y > tmp.y){
-                points[2] = p;
-            }
-            if(p.x > tmp.x && p.y > tmp.y){
-                points[3] = p;
-            }
+        if((psht1 > Math.abs(dist) && (psht1 * dist < 0)) || yaw > 0){
+            dists[0] = Math.toDegrees(Math.atan((psht1 + dist) / goalWallDist));
+        }else{
+            dists[0] = Math.toDegrees(Math.atan((psht1 - dist) / goalWallDist));
         }
 
-        MatOfPoint imgPoints = new MatOfPoint();
-        for (int i = 0; i < points.length; i ++) {
-            Point p = points[i];
-            if(!(p == null)) {
-                Point newPoint = new Point(p.x + newBound.x, p.y + newBound.y);
-                //Point newPoint = new Point(p.x, p.y);
-                Imgproc.circle(in, newPoint, 3, colors[i], Imgproc.FILLED);
-                //System.out.println("(" + newPoint.x + ", " + newPoint.y + ")");
-                imgPoints.push_back(new MatOfPoint(newPoint));
-            }
+        if((psht2 > Math.abs(dist) && (psht2 * dist < 0)) || yaw > 0){
+            dists[1] = Math.toDegrees(Math.atan((psht2 + dist) / goalWallDist));
+        }else{
+            dists[1] = Math.toDegrees(Math.atan((psht2 - dist) / goalWallDist));
         }
+
+        if((psht3 > Math.abs(dist) && (psht3 * dist < 0)) || yaw > 0){
+            dists[2] = Math.toDegrees(Math.atan((psht3 + dist) / goalWallDist));
+        }else{
+            dists[2] = Math.toDegrees(Math.atan((psht3 - dist) / goalWallDist));
+        }
+
+        return dists;
     }
 }

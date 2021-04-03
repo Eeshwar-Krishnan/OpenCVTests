@@ -387,16 +387,19 @@ public class PnPUtils {
         objPoints.push_back(new MatOfPoint3f(new Point3(0, 0, 0)));
         objPoints.push_back(new MatOfPoint3f(new Point3(tgalWidth, 0, 0)));
 
-        Imgproc.cvtColor(in, in, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.cvtColor(in, in, Imgproc.COLOR_GRAY2BGR);
+        //Imgproc.cvtColor(in, in, Imgproc.COLOR_BGR2GRAY);
+        //Imgproc.cvtColor(in, in, Imgproc.COLOR_GRAY2BGR);
+        Scalar[] colors = new Scalar[]{ new Scalar(255, 255, 255), new Scalar(0, 255, 0), new Scalar(0, 0, 255), new Scalar(255, 0, 255) };
 
-        for(Point p : imgPoints.toArray()){
-            Imgproc.circle(in, p, 4, new Scalar(0, 255, 0), -1);
-            System.out.println("(" + p.x + ", " + p.y + ")");
+        Point[] imgArr = imgPoints.toArray();
+        for(int i = 0; i < imgArr.length; i ++){
+            Point p = imgArr[i];
+            Imgproc.circle(in, p, 4, colors[i], -1);
+            //System.out.println("(" + p.x + ", " + p.y + ")");
         }
-        System.out.println();
+        //System.out.println();
         for(Point3 p : objPoints.toArray()){
-            System.out.println("(" + p.x + ", " + p.y + ")");
+            //System.out.println("(" + p.x + ", " + p.y + ")");
         }
 
         MatOfDouble distCoeffs = new MatOfDouble();

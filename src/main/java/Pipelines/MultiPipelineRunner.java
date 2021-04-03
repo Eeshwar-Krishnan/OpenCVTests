@@ -28,7 +28,7 @@ public class MultiPipelineRunner {
         PipelineTester pipeline = new PipelineTester();
         Mat matchMat = CvUtils.bufferedImageToMat(ImageIO.read(new File("src/assets/annotations/out631.png")));//432, 631
 
-        String annoFolder = "src/assets/input2";
+        String annoFolder = "src/assets/annotations";
         System.out.print("Serializing Images... ");
         long tmS = System.currentTimeMillis();
         ArrayList<Mat> inMats = new ArrayList<>();
@@ -126,6 +126,7 @@ public class MultiPipelineRunner {
 
         //VideoPlayback playback = new VideoPlayback(mts, 24);
         //playback.run();
+         ffmpeg -i out%d.jpg -c:v libx264 -vf fps=24 -pix_fmt yuv420p out.mp4
          */
     }
 }
