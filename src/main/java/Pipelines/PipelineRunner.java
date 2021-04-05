@@ -20,12 +20,9 @@ public class PipelineRunner {
     static{ System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 
     public static void main(String[] args) throws IOException {
-        PipelineTester pipeline = new PipelineTester();
-        Mat matchMat = CvUtils.bufferedImageToMat(ImageIO.read(new File("src/assets/input2/out23.png")));//238
+        PnPPipelineTester pipeline = new PnPPipelineTester();
+        Mat matchMat = CvUtils.bufferedImageToMat(ImageIO.read(new File("src/assets/input2/out10.png")));//238
 
-        Mat blurMat = CvUtils.bufferedImageToMat(ImageIO.read(new File("src/assets/outBounding/output631.png")));//631
-        Imgproc.resize(blurMat, blurMat, matchMat.size());
-        //HighGui.imshow("Input", blurMat);
 
         Mat out = pipeline.processFrame(matchMat);
         //System.out.println(pipeline.getPos().dump());

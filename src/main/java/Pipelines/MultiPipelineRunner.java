@@ -25,10 +25,10 @@ public class MultiPipelineRunner {
     static{ System.loadLibrary(Core.NATIVE_LIBRARY_NAME); }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        PipelineTester pipeline = new PipelineTester();
+        PnPPipelineTester pipeline = new PnPPipelineTester();
         Mat matchMat = CvUtils.bufferedImageToMat(ImageIO.read(new File("src/assets/annotations/out631.png")));//432, 631
 
-        String annoFolder = "src/assets/annotations";
+        String annoFolder = "src/assets/input2";
         System.out.print("Serializing Images... ");
         long tmS = System.currentTimeMillis();
         ArrayList<Mat> inMats = new ArrayList<>();

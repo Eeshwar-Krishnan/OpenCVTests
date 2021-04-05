@@ -23,6 +23,7 @@ import main.java.Utils.CvUtils;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
@@ -50,7 +51,7 @@ public class ThresholdInRange {
     private CaptureTask captureTask;
     private Mat srcMat;
     public ThresholdInRange(String[] args) throws IOException {
-        int cameraDevice = 0;
+        int cameraDevice = 1;
         if (args.length > 0) {
             cameraDevice = Integer.parseInt(args[0]);
         }
@@ -82,7 +83,8 @@ public class ThresholdInRange {
         frame.setVisible(true);
         captureTask = new CaptureTask();
         captureTask.execute();
-        srcMat = CvUtils.bufferedImageToMat(ImageIO.read(new File("src/assets/Capture.png")));
+        srcMat = CvUtils.bufferedImageToMat(ImageIO.read(new File("src/assets/input2/out285.png")));
+        Imgproc.resize(srcMat, srcMat, new Size(1280, 720));
     }
     private class CaptureTask extends SwingWorker<Void, Mat> {
         @Override

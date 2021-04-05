@@ -5,6 +5,7 @@ import org.opencv.core.*;
 import org.opencv.highgui.HighGui;
 import org.opencv.imgproc.Imgproc;
 
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -209,121 +210,16 @@ public class PnPUtils {
         return outMat;
     }
 
-    public static Mat solvePnP3(Mat in, Rect bounds){
-        double inset = 0.1;
-        double maxInset = 0.2;
-        double yInst = 0.5;
-        double maxYInset = 0.4;
+    public static double[] solvePnP3(Mat in, RotatedRect bounds, MatOfPoint contour, Mat outMat){
+        MatOfPoint2f imagePoints = new MatOfPoint2f(contour.toArray());
+        MatOfPoint3f objectPoints = new MatOfPoint3f();
 
-        Rect newBound = new Rect((int)(bounds.x + (bounds.width * inset)), (int) (bounds.y + (bounds.height * yInst)), (int)(bounds.width * (1-maxInset)), (int) (bounds.height * (1-maxYInset)));
-
-        //System.out.println("Bounds " + newBound + " | " + bounds);
-
-        Mat inCopy = in.submat(newBound);
-        Mat inNorm = BetterTowerGoalUtils.normCropInRange(inCopy);
-
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
-        Imgproc.morphologyEx(inNorm, inNorm, Imgproc.MORPH_OPEN, kernel);
-
-        Mat fullMask = new Mat(inNorm.rows(), inNorm.cols(), inNorm.type(), new Scalar(255,255,255));
-        Mat subMask = new Mat();
-        Core.subtract(fullMask, inNorm, subMask);
-
-        Mat outMat = in.clone();
-        Imgproc.cvtColor(outMat, outMat, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.cvtColor(outMat, outMat, Imgproc.COLOR_GRAY2BGR);
-
-        MatOfPoint contour = BetterTowerGoalUtils.getChainedContour(subMask);
-
-        MatOfPoint2f dp = new MatOfPoint2f();
-        MatOfPoint2f curve2f = new MatOfPoint2f(contour.toArray());
-        Imgproc.approxPolyDP(curve2f, dp, 0.01 * (Imgproc.arcLength(curve2f, true)), true);
-        Scalar[] colors = new Scalar[]{ new Scalar(255, 255, 255), new Scalar(0, 255, 0), new Scalar(0, 0, 255), new Scalar(255, 0, 255) };
-        int idx = 0;
-
-        MatOfPoint fixedPoints = new MatOfPoint();
-        for(Point p : dp.toArray()){
-            if(p.x == 0 || p.x == (subMask.width()-1)){
-                continue;
-            }
-            //System.out.println("(" + p.x + ", " + p.y + ")");
-            //Imgproc.circle(outMat, p, 3, colors[idx], Imgproc.FILLED);
-            idx ++;
-            if(idx == 4){
-                idx = 3;
-            }
-            fixedPoints.push_back(new MatOfPoint(p));
-        }
-
-        //Imgproc.drawContours(outMat, Collections.singletonList(new MatOfPoint(dp.toArray())), -1, new Scalar(0, 255, 0));
-
-        Point[] points  = new Point[4];
-        for(Point p : fixedPoints.toArray()){
-            Point tmp = new Point((newBound.width/2.0), (newBound.height/2.0));
-
-            //System.out.println("P " + p + " Tmp " + tmp);
-
-            if(p.x < tmp.x && p.y < tmp.y){
-                points[0] = p;
-            }
-            if(p.x > tmp.x && p.y < tmp.y){
-                points[1] = p;
-            }
-            if(p.x < tmp.x && p.y > tmp.y){
-                points[2] = p;
-            }
-            if(p.x > tmp.x && p.y > tmp.y){
-                points[3] = p;
-            }
-        }
-
-        MatOfPoint imgPoints = new MatOfPoint();
-        for (int i = 0; i < points.length; i ++) {
-            Point p = points[i];
-            if(!(p == null)) {
-                Point newPoint = new Point(p.x + newBound.x, p.y + newBound.y);
-                //Point newPoint = new Point(p.x, p.y);
-                Imgproc.circle(outMat, newPoint, 3, colors[i], Imgproc.FILLED);
-                //System.out.println("(" + newPoint.x + ", " + newPoint.y + ")");
-                imgPoints.push_back(new MatOfPoint(newPoint));
-            }
-        }
-
-        Point tl = bounds.tl();
-        Point br = bounds.br();
-        Point tr = new Point(br.x, tl.y);
-        Point bl = new Point(tl.x, br.y);
-
-        //imgPoints.push_back(new MatOfPoint(tl));
-        //imgPoints.push_back(new MatOfPoint(br));
-        //imgPoints.push_back(new MatOfPoint(tr));
-        //imgPoints.push_back(new MatOfPoint(bl));
-
-        //Imgproc.rectangle(outMat, newBound, new Scalar(255, 0, 0));
-
-        double insetWidth = 16;
         double tgoalHeight = 15.75;
-        double tgalWidth = 23.87500;
-        double xInset = 3.9375;
-        double yInset = 5.5;
+        double tgoalWidth = 23.87500;
 
-        MatOfPoint3f objPoints = new MatOfPoint3f();
-        objPoints.push_back(new MatOfPoint3f(new Point3(xInset, yInset, 0)));
-        objPoints.push_back(new MatOfPoint3f(new Point3(xInset + insetWidth, yInset, 0)));
-        objPoints.push_back(new MatOfPoint3f(new Point3(xInset, 0, 0)));
-        objPoints.push_back(new MatOfPoint3f(new Point3(xInset + insetWidth, 0, 0)));
-
-        //objPoints.push_back(new MatOfPoint3f(new Point3(0, tgoalHeight, 0)));
-        //objPoints.push_back(new MatOfPoint3f(new Point3(tgalWidth, 0, 0)));
-        //objPoints.push_back(new MatOfPoint3f(new Point3(tgalWidth, tgoalHeight, 0)));
-        //objPoints.push_back(new MatOfPoint3f(new Point3(0, 0, 0)));
-
-        for(Point p : imgPoints.toArray()){
-            //System.out.println("(" + p.x + ", " + p.y + ")");
-        }
-        //System.out.println();
-        for(Point3 p : objPoints.toArray()){
-            //System.out.println("(" + p.x + ", " + p.y + ")");
+        for(Point p : imagePoints.toArray()){
+            Point scl = new Point(p.x / bounds.size.width, p.y / bounds.size.height);
+            objectPoints.push_back(new MatOfPoint3f(new Point3(scl.x * tgoalWidth, scl.y * tgoalHeight, 0)));
         }
 
         MatOfDouble distCoeffs = new MatOfDouble();
@@ -331,93 +227,104 @@ public class PnPUtils {
         Mat rvec = new Mat();
         Mat tvec = new Mat();
 
-        double[] inrinsicFloat = new double[] {817.063304531327,0.0,325.9485286458284,0.0,819.4690054531818,236.2597899599986,0.0,0.0,1.0,0.0};
-        intrinsic.put(0, 0, inrinsicFloat);
+        //double[] inrinsicFloat = new double[] {817.063304531327,0.0,325.9485286458284,0.0,819.4690054531818,236.2597899599986,0.0,0.0,1.0,0.0};
+        double[] intrinsicFloat = new double[]{212.4928484986939, 0, 1767.403745144145, 0, 8775.039060970414, 1226.292868696765, 0, 0, 1};
+        intrinsic.put(0, 0, intrinsicFloat);
 
-        double[] distFloat = new double[] {-0.014680796227423968,1.3720322590501144,-0.0028429009326778093,0.0010064951672061734,-5.347658630748131};
+        //double[] distFloat = new double[] {-0.014680796227423968,1.3720322590501144,-0.0028429009326778093,0.0010064951672061734,-5.347658630748131};
+        double[] distFloat = new double[] {0.07622041092946209, 1.676748319435331, 0.1624917317491128, 0.7905723382101558, -0.1488714574814097};
         distCoeffs.fromArray(distFloat);
 
-        if(imgPoints.toArray().length == objPoints.toArray().length) {
-            Calib3d.solvePnPRansac(objPoints, new MatOfPoint2f(imgPoints.toArray()), intrinsic, distCoeffs, rvec, tvec);
+        if(imagePoints.toArray().length >= 6) {
+            Calib3d.solvePnP(objectPoints, imagePoints, intrinsic, distCoeffs, rvec, tvec);
             Calib3d.drawFrameAxes(outMat, intrinsic, distCoeffs, rvec, tvec, 5, 3);
+            Mat pos = CvUtils.toPosition(tvec, rvec);
+            return new double[]{pos.get(0, 0)[0], pos.get(1, 0)[0], pos.get(2, 0)[0]};
         }
-
-        return outMat;
+        return new double[]{0, 0, 0};
     }
 
-    public static void solvePnP4(Mat in, RotatedRect bounds){
-        MatOfPoint imgPoints;
+    public static double[] solvePnP4(Mat in, RotatedRect bounds, MatOfPoint contour, Mat outMat){
+        List<Point> cntArr = contour.toList();
 
-        Point[] pts = new Point[4];
-        bounds.points(pts);
+        if(cntArr.size() == 8){
 
-        Point[] points  = new Point[4];
-        for(Point p : pts){
-            Point tmp = bounds.center;
+            MatOfPoint imgPoints = new MatOfPoint();
 
-            //System.out.println("P " + p + " Tmp " + tmp);
+            cntArr.sort(Comparator.comparingDouble(o -> o.y));
 
-            if(p.x < tmp.x && p.y < tmp.y){
-                points[0] = p;
+            List<Point> topPoints = cntArr.subList(0, 2);
+            List<Point> inset = cntArr.subList(2, 4);
+            List<Point> bottomPoints = cntArr.subList(4, 8);
+            topPoints.sort(Comparator.comparingDouble(o -> o.x));
+            bottomPoints.sort(Comparator.comparingDouble(o -> o.x));
+            inset.sort(Comparator.comparingDouble(o -> o.x));
+
+            Point tl = topPoints.get(0);
+            Point tr = topPoints.get(1);
+
+            Point bl = bottomPoints.get(0);
+            Point br = bottomPoints.get(3);
+
+            Point itl = inset.get(0);
+            Point itr = inset.get(1);
+            Point ibl = bottomPoints.get(1);
+            Point ibr = bottomPoints.get(2);
+
+            double insetWidth = 16;
+            double tgoalHeight = 15.75;
+            double tgoalWidth = 23.87500;
+            double xInset = 3.9375;
+            double yInset = 5.5;
+
+            imgPoints.push_back(new MatOfPoint(tl));
+            imgPoints.push_back(new MatOfPoint(tr));
+            imgPoints.push_back(new MatOfPoint(bl));
+            imgPoints.push_back(new MatOfPoint(ibl));
+            imgPoints.push_back(new MatOfPoint(ibr));
+            imgPoints.push_back(new MatOfPoint(itl));
+            imgPoints.push_back(new MatOfPoint(itr));
+            imgPoints.push_back(new MatOfPoint(br));
+
+            MatOfPoint3f objPoints = new MatOfPoint3f();
+            objPoints.push_back(new MatOfPoint3f(new Point3(0, tgoalHeight, 0)));
+            objPoints.push_back(new MatOfPoint3f(new Point3(tgoalWidth, tgoalHeight, 0)));
+            objPoints.push_back(new MatOfPoint3f(new Point3(0, 0, 0)));
+            objPoints.push_back(new MatOfPoint3f(new Point3(xInset, 0, 0)));
+            objPoints.push_back(new MatOfPoint3f(new Point3(xInset + insetWidth, 0, 0)));
+            objPoints.push_back(new MatOfPoint3f(new Point3(xInset, yInset, 0)));
+            objPoints.push_back(new MatOfPoint3f(new Point3(xInset + insetWidth, yInset, 0)));
+            objPoints.push_back(new MatOfPoint3f(new Point3(tgoalWidth, 0, 0)));
+
+            for(Point p : imgPoints.toArray()){
+                System.out.println("(" + p.x + ", " + p.y + ")");
             }
-            if(p.x > tmp.x && p.y < tmp.y){
-                points[1] = p;
+            System.out.println();
+            for(Point3 p : objPoints.toArray()){
+                System.out.println("(" + p.x + ", " + p.y + ")");
             }
-            if(p.x < tmp.x && p.y > tmp.y){
-                points[2] = p;
-            }
-            if(p.x > tmp.x && p.y > tmp.y){
-                points[3] = p;
+
+            MatOfDouble distCoeffs = new MatOfDouble();
+            Mat intrinsic = new Mat(3, 3, CvType.CV_32FC1);
+            Mat rvec = new Mat();
+            Mat tvec = new Mat();
+
+            //double[] inrinsicFloat = new double[] {817.063304531327,0.0,325.9485286458284,0.0,819.4690054531818,236.2597899599986,0.0,0.0,1.0,0.0};
+            double[] intrinsicFloat = new double[]{212.4928484986939, 0, 1767.403745144145, 0, 8775.039060970414, 1226.292868696765, 0, 0, 1};
+            intrinsic.put(0, 0, intrinsicFloat);
+
+            //double[] distFloat = new double[] {-0.014680796227423968,1.3720322590501144,-0.0028429009326778093,0.0010064951672061734,-5.347658630748131};
+            double[] distFloat = new double[] {0.07622041092946209, 1.676748319435331, 0.1624917317491128, 0.7905723382101558, -0.1488714574814097};
+            distCoeffs.fromArray(distFloat);
+
+            if(imgPoints.toArray().length >= 6) {
+                Calib3d.solvePnPRansac(objPoints, new MatOfPoint2f(imgPoints.toArray()), intrinsic, distCoeffs, rvec, tvec);
+                Calib3d.drawFrameAxes(outMat, intrinsic, distCoeffs, rvec, tvec, 5, 3);
+                Mat pos = CvUtils.toPosition(tvec, rvec);
+                return new double[]{pos.get(0, 0)[0], pos.get(1, 0)[0], pos.get(2, 0)[0]};
             }
         }
-
-        imgPoints = new MatOfPoint(points);
-
-        //Imgproc.rectangle(outMat, newBound, new Scalar(255, 0, 0));
-
-        double insetWidth = 16;
-        double tgoalHeight = 15.75;
-        double tgalWidth = 23.87500;
-        double xInset = 3.9375;
-        double yInset = 5.5;
-
-        MatOfPoint3f objPoints = new MatOfPoint3f();
-        objPoints.push_back(new MatOfPoint3f(new Point3(0, tgoalHeight, 0)));
-        objPoints.push_back(new MatOfPoint3f(new Point3(tgalWidth, tgoalHeight, 0)));
-        objPoints.push_back(new MatOfPoint3f(new Point3(0, 0, 0)));
-        objPoints.push_back(new MatOfPoint3f(new Point3(tgalWidth, 0, 0)));
-
-        //Imgproc.cvtColor(in, in, Imgproc.COLOR_BGR2GRAY);
-        //Imgproc.cvtColor(in, in, Imgproc.COLOR_GRAY2BGR);
-        Scalar[] colors = new Scalar[]{ new Scalar(255, 255, 255), new Scalar(0, 255, 0), new Scalar(0, 0, 255), new Scalar(255, 0, 255) };
-
-        Point[] imgArr = imgPoints.toArray();
-        for(int i = 0; i < imgArr.length; i ++){
-            Point p = imgArr[i];
-            Imgproc.circle(in, p, 4, colors[i], -1);
-            //System.out.println("(" + p.x + ", " + p.y + ")");
-        }
-        //System.out.println();
-        for(Point3 p : objPoints.toArray()){
-            //System.out.println("(" + p.x + ", " + p.y + ")");
-        }
-
-        MatOfDouble distCoeffs = new MatOfDouble();
-        Mat intrinsic = new Mat(3, 3, CvType.CV_32FC1);
-        Mat rvec = new Mat();
-        Mat tvec = new Mat();
-
-        double[] inrinsicFloat = new double[] {817.063304531327,0.0,325.9485286458284,0.0,819.4690054531818,236.2597899599986,0.0,0.0,1.0,0.0};
-        intrinsic.put(0, 0, inrinsicFloat);
-
-        double[] distFloat = new double[] {-0.014680796227423968,1.3720322590501144,-0.0028429009326778093,0.0010064951672061734,-5.347658630748131};
-        distCoeffs.fromArray(distFloat);
-
-
-        if(imgPoints.toArray().length == objPoints.toArray().length) {
-            Calib3d.solvePnPRansac(objPoints, new MatOfPoint2f(imgPoints.toArray()), intrinsic, distCoeffs, rvec, tvec);
-            Calib3d.drawFrameAxes(in, intrinsic, distCoeffs, rvec, tvec, 5, 3);
-        }
+        return new double[]{0, 0, 0};
     }
 
     public static double[] getPitchAndYaw(Mat in, Rect bounds, Mat outMat){

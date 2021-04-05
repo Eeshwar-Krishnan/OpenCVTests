@@ -10,6 +10,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class CvUtils {
@@ -170,6 +171,20 @@ public class CvUtils {
         for(int i=0; i<4; ++i){
             Imgproc.line(in, points[i], points[(i+1)%4], color, thickness);
         }
+    }
+
+    public static Point[] getCorners(MatOfPoint contour){
+        Point tl, tr, bl, br;
+
+        List<Point> points = contour.toList();
+        points.sort(Comparator.comparingDouble(o -> o.x));
+        points.sort(Comparator.comparingDouble(o -> o.y));
+
+        for(Point p : points){
+            //System.out.println("(" + p.x + ", " + p.y + ")");
+        }
+
+        return new Point[]{new Point(0, 0)};
     }
 
     public static double calcPinholeHor(double fov, double imageWidth, double imageHeight){

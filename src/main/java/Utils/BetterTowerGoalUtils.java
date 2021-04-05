@@ -329,17 +329,15 @@ public class BetterTowerGoalUtils {
 
         Mat cropped = inClone.submat(enlarged);
 
+        Size kSize = new Size(5, 5);
+        Imgproc.blur(cropped, cropped, kSize);
+
         Mat extracted = normCropInRange(cropped);
 
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(15, 15));
         Imgproc.morphologyEx(extracted, extracted, Imgproc.MORPH_OPEN, kernel);
 
-        kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
-        //Imgproc.morphologyEx(extracted, extracted, Imgproc.MORPH_CLOSE, kernel);
-        //Core.extractChannel(cropped, extracted, 2);
-        //Imgproc.adaptiveThreshold(extracted, extracted, 255, Imgproc.ADAPTIVE_THRESH_GAUSSIAN_C, Imgproc.THRESH_BINARY, 11, 2);
-
-        //Imgproc.cvtColor(extracted, outMat, Imgproc.COLOR_GRAY2BGR);
+        Imgproc.blur(extracted, extracted, kSize);
 
         MatOfPoint contour = getContour(extracted);
         MatOfPoint2f cnt2f = new MatOfPoint2f(contour.toArray());
